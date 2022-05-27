@@ -65,6 +65,10 @@ namespace Nanoray.Pintail
                 if (proxyType.GetEnumUnderlyingType() != targetType.GetEnumUnderlyingType())
                     return MatchingTypesResult.False;
 
+                // No need to check the enum values here, don't build them.
+                if (enumMappingBehavior == ProxyManagerEnumMappingBehavior.ThrowAtRuntime)
+                    return MatchingTypesResult.IfProxied;
+
                 var proxyEnumRawValues = proxyType.GetEnumerableEnumValues().Select(e => Convert.ChangeType(e, proxyType.GetEnumUnderlyingType())).ToHashSet();
                 var targetEnumRawValues = targetType.GetEnumerableEnumValues().Select(e => Convert.ChangeType(e, proxyType.GetEnumUnderlyingType())).ToHashSet();
                 switch (enumMappingBehavior)
@@ -73,8 +77,6 @@ namespace Nanoray.Pintail
                         return proxyEnumRawValues == targetEnumRawValues ? MatchingTypesResult.IfProxied : MatchingTypesResult.False;
                     case ProxyManagerEnumMappingBehavior.AllowAdditive:
                         return proxyEnumRawValues.IsSubsetOf(targetEnumRawValues) ? MatchingTypesResult.IfProxied : MatchingTypesResult.False;
-                    case ProxyManagerEnumMappingBehavior.ThrowAtRuntime:
-                        return MatchingTypesResult.IfProxied;
                 }
             }
 
@@ -174,6 +176,7 @@ namespace Nanoray.Pintail
                 case MatchingTypesResult.False:
                     return null;
                 case MatchingTypesResult.Exact:
+                case MatchingTypesResult.Assignable:
                     break;
                 case MatchingTypesResult.IfProxied:
                     positionConversions[0] = PositionConversion.Proxy;
@@ -187,6 +190,7 @@ namespace Nanoray.Pintail
                     case MatchingTypesResult.False:
                         return null;
                     case MatchingTypesResult.Exact:
+                    case MatchingTypesResult.Assignable:
                         break;
                     case MatchingTypesResult.IfProxied:
                         positionConversions[i + 1] = PositionConversion.Proxy;
@@ -229,7 +233,7 @@ namespace Nanoray.Pintail
 
             // check the cache.
             List<Type>? types = null;
-            string cachekey = $"{target.AssemblyQualifiedName ?? $"{target.Assembly.GetName().Name}??{target.Namespace}??{target.Name}"}@@{enumMappingBehavior:D}@@{assignability:D}"; //sometimes AssemblyQualifiedName is null
+            string cachekey = $"{target.AssemblyQualifiedName ?? $"{target.Assembly.GetName().FullName}??{target.Namespace}??{target.Name}"}@@{enumMappingBehavior:D}@@{assignability:D}"; //sometimes AssemblyQualifiedName is null
             if (cache.Contains(cachekey))
             {
                 CacheItem? item = cache.GetCacheItem(cachekey);
@@ -243,7 +247,7 @@ namespace Nanoray.Pintail
 
             // Figure out groupby...
             var ToAssignToMethods = (assignability == MethodTypeAssignability.AssignTo ? target.FindInterfaceMethods() : proxy.FindInterfaceMethods());
-            var ToAssignFromMethods = (assignability == MethodTypeAssignability.AssignTo ? proxy.FindInterfaceMethods() : target.FindInterfaceMethods());
+            var ToAssignFromMethods = (assignability == MethodTypeAssignability.AssignTo ? proxy.FindInterfaceMethods() : target.FindInterfaceMethods()).ToList();
 
             HashSet<MethodInfo> FoundMethods = new();
 
@@ -255,9 +259,9 @@ namespace Nanoray.Pintail
                 foreach (var assignFromMethod in ToAssignFromMethods)
                 {
                     // double check the directions are right here. Argh. I can never seem to get AssignTo/AssignFrom right on the first try.
-                    if (TypeUtilities.MatchProxyMethod(assignToMethod, assignFromMethod, enumMappingBehavior, assumeMappableIfRecursed) is not null)
+                    if (MatchProxyMethod(assignToMethod, assignFromMethod, enumMappingBehavior, assumeMappableIfRecursed) is not null)
                     {
-                        FoundMethods.Add(assignToMethod);
+                        FoundMethods.Add(assignFromMethod);
                         goto NextMethod;
                     }
                 }
@@ -266,8 +270,12 @@ NextMethod:
                 ;
             }
 
-            if (assignability == MethodTypeAssignability.Exact && FoundMethods != ToAssignFromMethods)
-                return false;
+            if (assignability == MethodTypeAssignability.Exact)
+            {
+                FoundMethods.SymmetricExceptWith(ToAssignFromMethods);
+                if (FoundMethods.Count != 0)
+                    return false;
+            }
 
             types ??= new();
             types.Add(proxy);
@@ -276,51 +284,41 @@ NextMethod:
             return true;
         }
 
-        internal static IEnumerable<MethodInfo> FindInterfaceMethods(this Type baseType)
+        internal static IEnumerable<MethodInfo> FindInterfaceMethods(this Type baseType, Func<MethodInfo, bool>? filter = null)
         {
+            filter ??= (_) => true;
             foreach (MethodInfo method in baseType.GetMethods())
             {
-                yield return method;
+                if (filter(method))
+                    yield return method;
             }
             foreach (Type interfaceType in baseType.GetInterfaces())
             {
-                foreach (var method in FindInterfaceMethods(interfaceType))
+                foreach (var method in FindInterfaceMethods(interfaceType, filter))
                 {
-                    yield return method;
+                    if (filter(method))
+                        yield return method;
                 }
             }
         }
 
-        internal static IEnumerable<(MethodInfo targetMethod, PositionConversion?[] positionConversions)> RankMethods(
+        internal static IEnumerable<KeyValuePair<MethodInfo, PositionConversion?[]>> RankMethods(
             Dictionary<MethodInfo, TypeUtilities.PositionConversion?[]> candidates,
             MethodInfo proxyMethod)
         {
             if (candidates.Count == 1)
-            {
-                var (target, positions) = candidates.First();
-                yield return (target, positions);
-                yield break;
-            }
+                return candidates;
 
             // Favor methods where the names match.
             var nameMatches = candidates.Where((kvp) => AreAllParamNamesMatching(kvp.Key, proxyMethod)).ToList();
             if (nameMatches.Count == 1)
-            {
-                var (target, positions) = nameMatches.First();
-                yield return (target, positions);
-                yield break;
-            }
-            else if (nameMatches.Count == 0)
-            { // No name matches, all will be considered equally.
+                return nameMatches;
+            else if (nameMatches.Count == 0) // No name matches, all will be considered equally. 
                 nameMatches = candidates.ToList();
-            }
 
             // okay, we seem to have multiple. Let's try ranking them.
             nameMatches.Sort((a, b) => CompareTwoMethods(a.Key, b.Key));
-            foreach (var (target, positions) in nameMatches)
-                yield return (target, positions);
-
-            yield break;
+            return nameMatches;
         }
 
         private static bool AreAllParamNamesMatching(MethodInfo target, MethodInfo proxy)
@@ -358,7 +356,9 @@ NextMethod:
 
             if (direction == 0)
             {
-                if (methodA.DeclaringType!.IsAssignableTo(methodB.DeclaringType))
+                if (methodA.DeclaringType == methodB.DeclaringType) // somehow you gave me the same method???
+                    return 0;
+                else if (methodA.DeclaringType!.IsAssignableTo(methodB.DeclaringType))
                     return -1;
                 else if (methodA.DeclaringType!.IsAssignableFrom(methodB.DeclaringType))
                     return 1;

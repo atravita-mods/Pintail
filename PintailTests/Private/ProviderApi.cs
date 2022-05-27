@@ -6,6 +6,34 @@ namespace Nanoray.Pintail.Tests.Provider
 {
     public delegate void CustomGenericOutDelegate<T>(out T param);
 
+    public abstract class ATestClass
+    {
+        public abstract class InnerClass
+        {
+            public abstract string sigh { get; }
+        }
+
+        public class InnerClassImpl: InnerClass
+        {
+            public override string sigh { get; } = "helloworld";
+        }
+        public abstract InnerClass[]? inner { get; }
+
+        public abstract string? Name { get; }
+    }
+
+    public class ATestClassImpl : ATestClass
+    {
+        private class InnerClassImpl : InnerClass
+        {
+            public override string sigh { get; } = "sigh";
+        }
+
+        public override InnerClass[] inner { get; } = new[] { new InnerClassImpl() };
+
+        public override string? Name { get; } = "Hi!";
+    }
+
     public enum StateEnum
     {
         State0, State1, State2
@@ -121,6 +149,8 @@ namespace Nanoray.Pintail.Tests.Provider
 
     public class ComplexProviderApi: SimpleProviderApi
     {
+
+        public IList<IProxiedInput> list { get; } = new List<IProxiedInput>();
         public StateEnum GetStateEnum()
             => StateEnum.State1;
 

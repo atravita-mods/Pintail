@@ -121,7 +121,7 @@ namespace Nanoray.Pintail
             var allProxyMethods = this.ProxyInfo.Proxy.Type.FindInterfaceMethods(filter);
 
             // proxy methods
-            IList<ProxyInfo<Context>> relatedProxyInfos = new List<ProxyInfo<Context>>();
+            var relatedProxyInfos = new List<ProxyInfo<Context>>();
             foreach (MethodInfo proxyMethod in allProxyMethods)
             {
                 var candidates = new Dictionary<MethodInfo, TypeUtilities.PositionConversion?[]>();

@@ -9,6 +9,9 @@ namespace Nanoray.Pintail
 {
     internal static class TypeUtilities
     {
+        // maybe make this a setting?
+        internal const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy;
+
         static readonly MemoryCache cache = new("ProxyCache");
 
         /// <summary>
@@ -246,22 +249,22 @@ namespace Nanoray.Pintail
             }
 
             // Figure out groupby...
-            var ToAssignToMethods = (assignability == MethodTypeAssignability.AssignTo ? target.FindInterfaceMethods() : proxy.FindInterfaceMethods());
-            var ToAssignFromMethods = (assignability == MethodTypeAssignability.AssignTo ? proxy.FindInterfaceMethods() : target.FindInterfaceMethods()).ToList();
+            var ToAssignToMethods = (assignability == MethodTypeAssignability.AssignTo ? target.GetMethods(bindingFlags) : proxy.GetMethods(bindingFlags));
+            //var ToAssignFromMethods = (assignability == MethodTypeAssignability.AssignTo ? proxy.GetMethods(bindingFlags) : target.GetMethods(bindingFlags)).ToList();
 
-            HashSet<MethodInfo> FoundMethods = new();
+            var ToAssignFromType = assignability == MethodTypeAssignability.AssignTo ? proxy : target;
 
             // To avoid infinite recursion, avoid checking myself.
             assumeMappableIfRecursed = assumeMappableIfRecursed.Add(target).Add(proxy);
 
             foreach (var assignToMethod in ToAssignToMethods)
             {
-                foreach (var assignFromMethod in ToAssignFromMethods)
+                foreach (var assignFrom in ToAssignFromType.GetMember(assignToMethod.Name, MemberTypes.Method, bindingFlags))
                 {
                     // double check the directions are right here. Argh. I can never seem to get AssignTo/AssignFrom right on the first try.
-                    if (MatchProxyMethod(assignToMethod, assignFromMethod, enumMappingBehavior, assumeMappableIfRecursed) is not null)
+                    if (assignFrom is MethodInfo assignFromMethod &&
+                        MatchProxyMethod(assignToMethod, assignFromMethod, enumMappingBehavior, assumeMappableIfRecursed) is not null)
                     {
-                        FoundMethods.Add(assignFromMethod);
                         goto NextMethod;
                     }
                 }
@@ -272,8 +275,7 @@ NextMethod:
 
             if (assignability == MethodTypeAssignability.Exact)
             {
-                FoundMethods.SymmetricExceptWith(ToAssignFromMethods);
-                if (FoundMethods.Count != 0)
+                if (proxy.GetMethods(bindingFlags).Length != target.GetMethods(bindingFlags).Length)
                     return false;
             }
 

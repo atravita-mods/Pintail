@@ -40,7 +40,7 @@ namespace Nanoray.Pintail.PerformanceTests.Tests
             _ = consumerApi.IntProperty;
             _ = consumerApi["asdf"];
             _ = consumerApi.MapperMethod("word.", (t) => t.Length);
-            _counter.Increment();
+            this._counter.Increment();
         }
     }
 }

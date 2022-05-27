@@ -1,10 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
 using Nanoray.Pintail.PerformanceTests.Consumers;
 using Nanoray.Pintail.PerformanceTests.Providers;
 using NBench;
@@ -32,7 +28,7 @@ namespace Nanoray.Pintail.PerformanceTests.Tests
         [PerfBenchmark(NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
         [CounterMeasurement("ComplexApi")]
         [GcThroughputAssertion(GcMetric.TotalCollections, GcGeneration.AllGc, MustBe.LessThanOrEqualTo, 10.0)]
-        public void TestSuccessfulBasicApi()
+        public void TestSuccessfulComplexApi()
         {
             var manager = this.CreateProxyManager();
             var providerApi = new ComplexProviderApi();

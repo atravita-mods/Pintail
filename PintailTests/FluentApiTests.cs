@@ -42,6 +42,14 @@ namespace Nanoray.Pintail.Tests
 
             Assert.AreEqual(1337, consumerApi.Prop);
             Assert.AreEqual(2500, otherconsumerApi.Prop);
+
+            ProxiedInput input = new("hi");
+
+            consumerApi.Action += this.ConsumerApi_Action;
+            consumerApi.FireEvent(input);
+            Assert.AreEqual("bye", input.teststring);
         }
+
+        private void ConsumerApi_Action(Consumer.IProxiedInput obj) => obj.teststring = "bye";
     }
 }

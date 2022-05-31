@@ -75,6 +75,10 @@ namespace Nanoray.Pintail.Tests.Provider
         public IProxiedInput[]? ArrayReturn() => this.array;
 
         public IList<IProxiedInput>? ListReturn() => this.array?.ToList();
+
+        public event Action<IProxiedInput>? Action;
+
+        public void FireEvent(IProxiedInput input) => this.Action?.Invoke(input);
     }
 
     public interface IFluentProviderApi
@@ -100,6 +104,10 @@ namespace Nanoray.Pintail.Tests.Provider
         public IProxiedInput[]? ArrayReturn();
 
         public IList<IProxiedInput>? ListReturn();
+
+        public event Action<IProxiedInput> Action;
+
+        public void FireEvent(IProxiedInput input);
 
         public int Prop { get; set; }
     }

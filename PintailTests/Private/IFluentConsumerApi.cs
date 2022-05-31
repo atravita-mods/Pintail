@@ -26,7 +26,10 @@ namespace Nanoray.Pintail.Tests.Consumer
         public IProxiedInput[]? ArrayReturn();
 
         public IList<IProxiedInput>? ListReturn();
-        //public IList<IProxiedInput> list { get; }
+
+        public void FireEvent(IProxiedInput input);
+
+        public event Action<IProxiedInput> Action;
     }
 
     public interface IFluentConsumerApiManager

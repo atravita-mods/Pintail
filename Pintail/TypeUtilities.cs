@@ -324,7 +324,14 @@ NextMethod:
         }
 
         private static bool AreAllParamNamesMatching(MethodInfo target, MethodInfo proxy)
-            => target.GetParameters().Zip(proxy.GetParameters(), (a, b) => (a, b)).All((pair) => pair.a.Name == pair.b.Name);
+        {
+            var targetparams = target.GetParameters();
+            var proxyparams = proxy.GetParameters();
+            for (int i = 0; i < targetparams.Length; i++)
+                if (targetparams[i].Name != proxyparams[i].Name)
+                    return false;
+            return true;
+        }
 
         /// <summary>
         /// Compares two methods to see which is the "better" overload.

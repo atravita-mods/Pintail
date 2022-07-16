@@ -28,13 +28,6 @@ namespace Nanoray.Pintail
         }
 
         private object MapEnum(object input, Type outputType)
-        {
-            foreach (object outputValue in Enum.GetValues(outputType))
-            {
-                if ((int)outputValue == (int)input)
-                    return outputValue;
-            }
-            throw new ArgumentException($"Cannot map {input} to type {outputType.GetShortName()}.");
-        }
+            => input;
     }
 }

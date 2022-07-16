@@ -56,7 +56,12 @@ namespace Nanoray.Pintail
         /// <summary>
         /// Allow all mappings; throw <see cref="ArgumentException"/> if it couldn't be mapped at runtime.
         /// </summary>
-        ThrowAtRuntime
+        ThrowAtRuntime,
+
+        /// <summary>
+        /// Allow all mappings, as long as the backing fields match. "Extra" values are simply allowed.
+        /// </summary>
+        Allow,
     }
 
     /// <summary>

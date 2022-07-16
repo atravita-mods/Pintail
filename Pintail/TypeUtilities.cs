@@ -71,7 +71,8 @@ namespace Nanoray.Pintail
                     return MatchingTypesResult.False;
 
                 // No need to check the enum values here, don't build them.
-                if (enumMappingBehavior == ProxyManagerEnumMappingBehavior.ThrowAtRuntime)
+                if (enumMappingBehavior == ProxyManagerEnumMappingBehavior.ThrowAtRuntime
+                    || enumMappingBehavior == ProxyManagerEnumMappingBehavior.Allow)
                     return MatchingTypesResult.IfProxied;
 
                 var proxyEnumRawValues = proxyType.GetEnumerableEnumValues().Select(e => Convert.ChangeType(e, proxyType.GetEnumUnderlyingType())).ToHashSet();

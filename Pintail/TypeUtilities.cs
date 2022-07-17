@@ -10,8 +10,12 @@ namespace Nanoray.Pintail
     {
         internal const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy;
         static readonly IDictionary<InterfaceMappingCacheKey, List<Type>> cache = new Dictionary<InterfaceMappingCacheKey, List<Type>>();
+        static readonly IDictionary<GetMemberCacheKey, MemberInfo[]> memberCache = new Dictionary<GetMemberCacheKey, MemberInfo[]>();
+        static readonly IDictionary<Type, MethodInfo[]> methodCache = new Dictionary<Type, MethodInfo[]>();
 
-        internal readonly record struct InterfaceMappingCacheKey(Type type, ProxyManagerEnumMappingBehavior enumBehavior, MethodTypeAssignability methodtype);
+        internal readonly record struct InterfaceMappingCacheKey(Type Type, ProxyManagerEnumMappingBehavior EnumBehavior, MethodTypeAssignability Methodtype);
+
+        internal readonly record struct GetMemberCacheKey(Type type, string name);
 
         /// <summary>
         /// Controls how the target interface should compare to the proxy interface.
@@ -250,7 +254,14 @@ namespace Nanoray.Pintail
 
             foreach (var assignToMethod in ToAssignToMethods)
             {
-                foreach (var assignFrom in ToAssignFromType.GetMember(assignToMethod.Name, MemberTypes.Method, bindingFlags))
+                var getmember = new GetMemberCacheKey(ToAssignFromType, assignToMethod.Name);
+                if (!memberCache.TryGetValue(getmember, out var members))
+                {
+                    members = ToAssignFromType.GetMember(assignToMethod.Name, MemberTypes.Method, bindingFlags);
+                    memberCache[getmember] = members;
+                }
+
+                foreach (var assignFrom in members)
                 {
                     // double check the directions are right here. Argh. I can never seem to get AssignTo/AssignFrom right on the first try.
                     if (assignFrom is MethodInfo assignFromMethod &&
@@ -280,7 +291,13 @@ NextMethod:
         internal static IEnumerable<MethodInfo> FindInterfaceMethods(this Type baseType, Func<MethodInfo, bool>? filter = null)
         {
             filter ??= (_) => true;
-            foreach (MethodInfo method in baseType.GetMethods())
+            if (!methodCache.TryGetValue(baseType, out var methods))
+            {
+                methods = baseType.GetMethods();
+                methodCache[baseType] = methods;
+            }
+
+            foreach (MethodInfo method in methods)
             {
                 if (filter(method))
                     yield return method;
@@ -296,7 +313,7 @@ NextMethod:
         }
 
         internal static IEnumerable<KeyValuePair<MethodInfo, PositionConversion?[]>> RankMethods(
-            Dictionary<MethodInfo, TypeUtilities.PositionConversion?[]> candidates,
+            Dictionary<MethodInfo, PositionConversion?[]> candidates,
             MethodInfo proxyMethod)
         {
             if (candidates.Count == 1)

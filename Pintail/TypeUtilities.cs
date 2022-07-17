@@ -9,7 +9,9 @@ namespace Nanoray.Pintail
     internal static class TypeUtilities
     {
         internal const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy;
-        static readonly IDictionary<string, List<Type>> cache = new Dictionary<string, List<Type>>();
+        static readonly IDictionary<InterfaceMappingCacheKey, List<Type>> cache = new Dictionary<InterfaceMappingCacheKey, List<Type>>();
+
+        internal readonly record struct InterfaceMappingCacheKey(Type type, ProxyManagerEnumMappingBehavior enumBehavior, MethodTypeAssignability methodtype);
 
         /// <summary>
         /// Controls how the target interface should compare to the proxy interface.
@@ -202,8 +204,6 @@ namespace Nanoray.Pintail
             return positionConversions;
         }
 
-        // This recursion might be dangerous. I'm not sure.
-        // Todo: figure out what else I need to do for recursion to avoid infinite loops.
         internal static bool CanInterfaceBeMapped(Type target, Type proxy, ProxyManagerEnumMappingBehavior enumMappingBehavior, MethodTypeAssignability assignability, ImmutableHashSet<Type> assumeMappableIfRecursed)
         {
             // If it's just assignable, we can skip the whole reflection logic
@@ -232,7 +232,7 @@ namespace Nanoray.Pintail
                 return false;
 
             // check the cache.
-            string cachekey = $"{target.AssemblyQualifiedName ?? $"{target.Assembly.GetName().FullName}??{target.Namespace}??{target.Name}"}@@{enumMappingBehavior:D}@@{assignability:D}"; //sometimes AssemblyQualifiedName is null
+            var cachekey = new InterfaceMappingCacheKey(target, enumMappingBehavior, assignability);
             if (cache.TryGetValue(cachekey, out List<Type>? types))
             {
                 if (types.Contains(proxy))

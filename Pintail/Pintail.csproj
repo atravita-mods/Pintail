@@ -17,6 +17,7 @@
 		<Copyright>Nanoray</Copyright>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <LangVersion>latest</LangVersion>
 	</PropertyGroup>
     <PropertyGroup>
       <GenerateDocumentationFile>True</GenerateDocumentationFile>

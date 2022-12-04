@@ -44,9 +44,9 @@ public class EnumeratorTests
 
         Assert.DoesNotThrow(() => proxiedEnumerator.MoveNext());
 
-        foreach (var prop in proxiedEnumerator.GetType().GetRuntimeProperties())
+        foreach (var prop in proxiedEnumerator.GetType().GetRuntimeMethods())
         {
-            Console.WriteLine(prop.PropertyType.ToString());
+            Console.WriteLine(prop.Name + ": " + prop.ReturnType.ToString());
         }
         Assert.DoesNotThrow(() => _ = proxiedEnumerator.Current);
     }

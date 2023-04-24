@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<RootNamespace>Nanoray.Pintail</RootNamespace>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
 		<TargetFramework>net5.0</TargetFramework>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
